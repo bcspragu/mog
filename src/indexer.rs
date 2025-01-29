@@ -5,15 +5,25 @@ use tantivy::{doc, Index};
 
 #[derive(Deserialize)]
 struct EmojiEntry {
-    emoji: String,
-    description: String,
+    name: String,
+    unified: String,
+    short_name: String,
+    short_names: Vec<String>,
+    category: String,
+    subcategory: String,
+    #[serde(default)]
+    text: String,
+    #[serde(default)]
+    texts: Vec<String>,
 }
 
 pub fn create_index() -> Result<()> {
     // Define schema
     let mut schema_builder = Schema::builder();
     let emoji_field = schema_builder.add_text_field("emoji", TEXT | STORED);
-    let description_field = schema_builder.add_text_field("description", TEXT | STORED);
+    let name_field = schema_builder.add_text_field("name", TEXT | STORED);
+    let short_name_field = schema_builder.add_text_field("short_name", TEXT | STORED);
+    let category_field = schema_builder.add_text_field("category", TEXT | STORED);
     let schema = schema_builder.build();
 
     // Create index
@@ -26,9 +36,23 @@ pub fn create_index() -> Result<()> {
 
     // Index emoji data
     for entry in emojis {
+        // Convert unified code to emoji
+        let emoji = String::from_utf16_lossy(&[u16::from_str_radix(&entry.unified, 16)?]);
+        
+        // Create searchable description combining various fields
+        let description = format!(
+            "{} {} {} {}",
+            entry.name,
+            entry.short_names.join(" "),
+            entry.category,
+            entry.subcategory
+        );
+
         index_writer.add_document(doc!(
-            emoji_field => entry.emoji,
-            description_field => entry.description,
+            emoji_field => emoji,
+            name_field => entry.name,
+            short_name_field => entry.short_name,
+            category_field => description,
         ))?;
     }
 

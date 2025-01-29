@@ -13,7 +13,11 @@ pub struct App {
 impl App {
     pub fn new() -> anyhow::Result<Self> {
         let index = Index::open_in_dir("emoji_index")?;
-        let query_parser = QueryParser::for_index(&index, vec![index.schema().get_field("description").unwrap()]);
+        let query_parser = QueryParser::for_index(&index, vec![
+            index.schema().get_field("name").unwrap(),
+            index.schema().get_field("short_name").unwrap(),
+            index.schema().get_field("category").unwrap(),
+        ]);
         
         Ok(Self {
             input: String::new(),
