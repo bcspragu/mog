@@ -42,7 +42,7 @@ impl App {
 
         self.emojis.clear();
         for (_score, doc_address) in top_docs {
-            let retrieved_doc = searcher.doc(doc_address)?;
+            let retrieved_doc: tantivy::Document = searcher.doc(doc_address)?;
             let emoji = retrieved_doc.get_first(self.index.schema().get_field("emoji").unwrap())
                 .and_then(|f| f.as_text())
                 .unwrap_or("")

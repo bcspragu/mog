@@ -7,9 +7,9 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
-use std::io::{self, stdout};
+use std::io::stdout;
 
 pub fn run() -> Result<()> {
     // Setup terminal
@@ -40,7 +40,7 @@ pub fn run() -> Result<()> {
                 KeyCode::Up => app.move_selection(-1),
                 KeyCode::Down => app.move_selection(1),
                 KeyCode::Enter => {
-                    if let Some(emoji) = app.selected_emoji() {
+                    if let Some(_emoji) = app.selected_emoji() {
                         // Copy to clipboard could be implemented here
                         break;
                     }
@@ -66,7 +66,7 @@ fn ui(f: &mut Frame, app: &App) {
             Constraint::Length(3),
             Constraint::Min(1),
         ])
-        .split(f.size());
+        .split(f.area());
 
     // Search input
     let input = Paragraph::new(app.input.as_str())
