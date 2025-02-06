@@ -1,4 +1,5 @@
 use crate::app::App;
+use crate::indexer::Backend;
 use anyhow::Result;
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -11,7 +12,7 @@ use ratatui::{
 };
 use std::io::stdout;
 
-pub fn run() -> Result<()> {
+pub fn run(search_backend: Backend) -> Result<()> {
     // Setup terminal
     enable_raw_mode()?;
     let mut stdout = stdout();
@@ -20,15 +21,14 @@ pub fn run() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     // Create app state
-    let mut app = App::new()?;
+    let mut app = App::new(search_backend);
 
     // Main loop
-    loop {
+    let emoji = loop {
         terminal.draw(|f| ui(f, &app))?;
 
         if let Event::Key(key) = event::read()? {
             match key.code {
-                KeyCode::Char('q') => break,
                 KeyCode::Char(c) => {
                     app.on_key(c);
                     app.search()?;
@@ -37,23 +37,27 @@ pub fn run() -> Result<()> {
                     app.backspace();
                     app.search()?;
                 }
+                KeyCode::Esc => break None,
                 KeyCode::Up => app.move_selection(-1),
                 KeyCode::Down => app.move_selection(1),
                 KeyCode::Enter => {
-                    if let Some(_emoji) = app.selected_emoji() {
-                        // Copy to clipboard could be implemented here
-                        break;
+                    if let Some(emoji) = app.selected_emoji() {
+                        break Some(emoji);
                     }
                 }
                 _ => {}
             }
         }
-    }
+    };
 
     // Restore terminal
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
+
+    if let Some(emoji) = emoji {
+        print!("{}", emoji);
+    }
 
     Ok(())
 }
@@ -62,10 +66,7 @@ fn ui(f: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(2)
-        .constraints([
-            Constraint::Length(3),
-            Constraint::Min(1),
-        ])
+        .constraints([Constraint::Length(3), Constraint::Min(1)])
         .split(f.area());
 
     // Search input
@@ -77,9 +78,7 @@ fn ui(f: &mut Frame, app: &App) {
     let items: Vec<ListItem> = app
         .emojis
         .iter()
-        .map(|(emoji, description)| {
-            ListItem::new(format!("{} - {}", emoji, description))
-        })
+        .map(|e| ListItem::new(format!("{} - {}", e.emoji, e.name)))
         .collect();
 
     let list = List::new(items)

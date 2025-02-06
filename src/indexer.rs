@@ -1,61 +1,97 @@
-use anyhow::Result;
 use serde::Deserialize;
-use tantivy::schema::{Schema, STORED, TEXT};
-use tantivy::{doc, Index};
+use thiserror::Error;
 
-#[derive(Deserialize)]
-struct EmojiEntry {
-    name: String,
-    unified: String,
-    short_name: String,
-    short_names: Vec<String>,
-    category: String,
-    subcategory: String,
-    #[serde(default)]
-    text: String,
-    #[serde(default)]
-    texts: Vec<String>,
+#[allow(dead_code)]
+#[derive(Clone)]
+pub struct Emoji {
+    pub emoji: String,
+    pub name: String,
+    pub short_name: String,
+    pub category: String,
 }
 
-pub fn create_index() -> Result<()> {
-    // Define schema
-    let mut schema_builder = Schema::builder();
-    let emoji_field = schema_builder.add_text_field("emoji", TEXT | STORED);
-    let name_field = schema_builder.add_text_field("name", TEXT | STORED);
-    let short_name_field = schema_builder.add_text_field("short_name", TEXT | STORED);
-    let category_field = schema_builder.add_text_field("category", TEXT | STORED);
-    let schema = schema_builder.build();
+impl From<&EmojiEntry> for Emoji {
+    fn from(value: &EmojiEntry) -> Self {
+        let emoji = value
+            .unified
+            .split('-')
+            .filter_map(|hex| u32::from_str_radix(hex, 16).ok())
+            .filter_map(char::from_u32)
+            .collect::<String>();
 
-    // Create index
-    let index = Index::create_in_dir("emoji_index", schema)?;
-    let mut index_writer = index.writer(50_000_000)?;
+        Emoji {
+            emoji,
+            name: value.name.clone(),
+            short_name: value.short_name.clone(),
+            category: value.category.clone(),
+        }
+    }
+}
 
-    // Read and parse emoji data
-    let file = std::fs::File::open("emoji-slim.json")?;
-    let emojis: Vec<EmojiEntry> = serde_json::from_reader(file)?;
+#[derive(Deserialize)]
+pub struct EmojiEntry {
+    pub name: String,
+    pub unified: String,
+    pub short_name: String,
+    pub short_names: Vec<String>,
+    pub category: String,
+    pub subcategory: String,
+    #[serde(default)]
+    pub text: String,
+    #[serde(default)]
+    pub texts: Vec<String>,
+}
 
-    // Index emoji data
-    for entry in emojis {
-        // Convert unified code to emoji
-        let emoji = String::from_utf16_lossy(&[u16::from_str_radix(&entry.unified, 16)?]);
-        
-        // Create searchable description combining various fields
-        let description = format!(
-            "{} {} {} {}",
-            entry.name,
-            entry.short_names.join(" "),
-            entry.category,
-            entry.subcategory
-        );
+pub trait SearcherBackend {
+    type Error;
 
-        index_writer.add_document(doc!(
-            emoji_field => emoji,
-            name_field => entry.name,
-            short_name_field => entry.short_name,
-            category_field => description,
-        ))?;
+    fn search(&mut self, query: &str) -> Result<Vec<Emoji>, Self::Error>;
+}
+
+pub trait IndexerBackend {
+    type Error;
+
+    fn index<'a, I>(&mut self, emojis: I) -> Result<(), Self::Error>
+    where
+        I: Iterator<Item = EmojiEntry>;
+}
+
+pub enum Backend {
+    Tantivy(crate::tantivy::Backend),
+    Nucleo(crate::nucleo::Backend),
+}
+
+#[derive(Error, Debug)]
+pub enum IndexError {
+    #[error("tantivy")]
+    Tantivy(#[source] crate::tantivy::IndexError),
+    #[error("nucleo")]
+    Nucleo(#[source] crate::nucleo::IndexError),
+}
+
+#[derive(Error, Debug)]
+pub enum SearchError {
+    #[error("tantivy")]
+    Tantivy(#[source] crate::tantivy::SearchError),
+    #[error("nucleo")]
+    Nucleo(#[source] crate::nucleo::SearchError),
+}
+
+impl Backend {
+    pub fn index<'a, I>(&mut self, emojis: I) -> Result<(), IndexError>
+    where
+        I: Iterator<Item = EmojiEntry>,
+    {
+        match self {
+            Backend::Tantivy(backend) => backend.index(emojis).map_err(IndexError::Tantivy),
+            Backend::Nucleo(backend) => backend.index(emojis).map_err(IndexError::Nucleo),
+        }
     }
 
-    index_writer.commit()?;
-    Ok(())
+    pub fn search(&mut self, query: &str) -> Result<Vec<Emoji>, SearchError> {
+        match self {
+            Backend::Tantivy(backend) => backend.search(query).map_err(SearchError::Tantivy),
+            Backend::Nucleo(backend) => backend.search(query).map_err(SearchError::Nucleo),
+        }
+    }
 }

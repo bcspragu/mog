@@ -1,0 +1,7 @@
+.aider*
+.env
+target
+emoji*.json
+emojidata/
+emoji_index/
+err.log
