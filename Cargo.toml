@@ -1,5 +1,5 @@
 [package]
-name = "emoji-picker"
+name = "mog"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,6 +13,6 @@ nucleo = { git = "https://github.com/bcspragu/nucleo", rev = "0888f55deb37f7a0cf
 thiserror = "2.0.11"
 
 [features]
-default = ["tantivy", "nucleo"]
+default = ["nucleo"]
 tantivy = []
 nucleo = []
