@@ -12,7 +12,8 @@ mog
 mog <term>
 
 # Search for an emoji and copy it to your clipboard (assuming `xsel` is installed)
-mog | xsel -b
+EMOJI=$(mog)
+echo $EMOJI | xsel -b
 ```
 
 ## Why "mog"?
