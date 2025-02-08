@@ -1,7 +1,7 @@
 use tantivy::collector::TopDocs;
 use tantivy::query::{BooleanQuery, BoostQuery, FuzzyTermQuery, Occur, RegexQuery};
 use tantivy::schema::{Schema, STORED, TEXT};
-use tantivy::{doc, Index, TantivyDocument, Term};
+use tantivy::{doc, Index, TantivyDocument, TantivyError, Term};
 use thiserror::Error;
 
 use crate::indexer::{Emoji, EmojiEntry, IndexerBackend, SearcherBackend};
@@ -20,26 +20,13 @@ pub enum IndexError {
 
 pub struct Backend {
     index: Index,
-    // query_parser: QueryParser,
 }
 
 impl Backend {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> Result<Self, TantivyError> {
         let index = Index::open_in_dir("emoji_index")?;
-        // let query_parser = QueryParser::for_index(
-        //     &index,
-        //     vec![
-        //         index.schema().get_field("emoji").unwrap(),
-        //         index.schema().get_field("name").unwrap(),
-        //         index.schema().get_field("short_name").unwrap(),
-        //         index.schema().get_field("category").unwrap(),
-        //     ],
-        // );
 
-        Ok(Self {
-            index,
-            // query_parser,
-        })
+        Ok(Self { index })
     }
 }
 

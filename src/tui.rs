@@ -1,6 +1,5 @@
-use crate::app::App;
 use crate::indexer::Backend;
-use anyhow::Result;
+use crate::{app::App, indexer::SearchError};
 use crossterm::{
     event::{self, Event, KeyCode},
     execute,
@@ -10,24 +9,43 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
-use std::io::stdout;
+use std::io::{self, stdout};
+use thiserror::Error;
 
-pub fn run(search_backend: Backend) -> Result<()> {
+#[derive(Error, Debug)]
+pub enum TuiError {
+    #[error("enabling raw mode")]
+    EnableRawMode(#[source] io::Error),
+    #[error("disabling raw mode")]
+    DisableRawMode(#[source] io::Error),
+    #[error("initializing backend")]
+    InitBackend(#[source] io::Error),
+    #[error("drawing app")]
+    Draw(#[source] io::Error),
+    #[error("reading event")]
+    ReadEvent(#[source] io::Error),
+    #[error("searching emojis")]
+    Search(#[from] SearchError),
+    #[error("showing cursor")]
+    ShowCursor(#[source] io::Error),
+}
+
+pub fn run(search_backend: Backend) -> Result<(), TuiError> {
     // Setup terminal
-    enable_raw_mode()?;
+    enable_raw_mode().map_err(TuiError::EnableRawMode)?;
     let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen);
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend).map_err(TuiError::InitBackend)?;
 
     // Create app state
     let mut app = App::new(search_backend);
 
     // Main loop
     let emoji = loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, &app)).map_err(TuiError::Draw)?;
 
-        if let Event::Key(key) = event::read()? {
+        if let Event::Key(key) = event::read().map_err(TuiError::ReadEvent)? {
             match key.code {
                 KeyCode::Char(c) => {
                     app.on_key(c);
@@ -51,9 +69,9 @@ pub fn run(search_backend: Backend) -> Result<()> {
     };
 
     // Restore terminal
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
+    disable_raw_mode().map_err(TuiError::DisableRawMode)?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    terminal.show_cursor().map_err(TuiError::ShowCursor)?;
 
     if let Some(emoji) = emoji {
         print!("{}", emoji);
