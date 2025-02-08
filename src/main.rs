@@ -9,7 +9,18 @@ mod tui;
 use indexer::{Backend, EmojiEntry};
 
 fn main() -> Result<(), String> {
+    let args: Vec<String> = std::env::args().collect();
+
+    let initial_input = args.get(1).map(|v| v.to_owned());
+
     let search_backend = std::env::var("SEARCH_BACKEND").unwrap_or("nucleo".to_string());
+    let feeling_lucky = std::env::var("IM_FEELING_LUCKY")
+        .map(|v| v.trim() != "")
+        .unwrap_or(false);
+
+    if feeling_lucky && initial_input.is_none() {
+        return Err("No input was given, but IM_FEELING_LUCKY was specified".to_string());
+    }
 
     let mut backend = match search_backend.as_str() {
         #[cfg(feature = "nucleo")]
@@ -32,7 +43,22 @@ fn main() -> Result<(), String> {
         .index(emojis.into_iter())
         .map_err(|e| format!("indexing emojis: {:?}", e))?;
 
-    // Run the TUI
-    tui::run(backend).map_err(|e| format!("running tui {:?}", e))?;
+    if feeling_lucky {
+        // We can unwrap this, we confirmed it was set above.
+        let query = initial_input.unwrap();
+        let emojis = backend
+            .search(&query)
+            .map_err(|e| format!("failed to run search: {:?}", e))?;
+        print!(
+            "{}",
+            emojis
+                .get(0)
+                .map(|e| e.emoji.clone())
+                .unwrap_or(format!("No emojis found for '{}'", query))
+        )
+    } else {
+        // Run the TUI
+        tui::run(backend, initial_input).map_err(|e| format!("running tui {:?}", e))?;
+    }
     Ok(())
 }
