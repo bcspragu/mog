@@ -64,7 +64,6 @@ impl SearcherBackend for Backend {
         }
         let status = loop {
             let status = self.nucleo.tick(100);
-            eprintln!("STATUS {:?}", status);
             if !status.running {
                 break status;
             }

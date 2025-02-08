@@ -28,18 +28,26 @@ pub enum TuiError {
     Search(#[from] SearchError),
     #[error("showing cursor")]
     ShowCursor(#[source] io::Error),
+    #[error("entering alternate screen")]
+    EnterAlternateScreen(#[source] io::Error),
+    #[error("leaving alternate screen")]
+    LeaveAlternateScreen(#[source] io::Error),
 }
 
-pub fn run(search_backend: Backend) -> Result<(), TuiError> {
+pub fn run(search_backend: Backend, initial_input: Option<String>) -> Result<(), TuiError> {
     // Setup terminal
     enable_raw_mode().map_err(TuiError::EnableRawMode)?;
     let mut stdout = stdout();
-    execute!(stdout, EnterAlternateScreen);
+    execute!(stdout, EnterAlternateScreen).map_err(TuiError::EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).map_err(TuiError::InitBackend)?;
+    let do_initial_search = initial_input.is_some();
 
     // Create app state
-    let mut app = App::new(search_backend);
+    let mut app = App::new(search_backend, initial_input);
+    if do_initial_search {
+        app.search()?;
+    }
 
     // Main loop
     let emoji = loop {
@@ -70,7 +78,8 @@ pub fn run(search_backend: Backend) -> Result<(), TuiError> {
 
     // Restore terminal
     disable_raw_mode().map_err(TuiError::DisableRawMode)?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen);
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)
+        .map_err(TuiError::LeaveAlternateScreen)?;
     terminal.show_cursor().map_err(TuiError::ShowCursor)?;
 
     if let Some(emoji) = emoji {

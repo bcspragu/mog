@@ -9,9 +9,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(backend: Backend) -> Self {
+    pub fn new(backend: Backend, initial_input: Option<String>) -> Self {
         Self {
-            input: String::new(),
+            input: initial_input.unwrap_or(String::new()),
             emojis: Vec::new(),
             selected: 0,
             backend,

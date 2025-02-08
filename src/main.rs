@@ -1,6 +1,8 @@
 mod app;
 mod indexer;
+#[cfg(feature = "nucleo")]
 mod nucleo;
+#[cfg(feature = "tantivy")]
 mod tantivy;
 mod tui;
 
@@ -10,11 +12,13 @@ fn main() -> Result<(), String> {
     let search_backend = std::env::var("SEARCH_BACKEND").unwrap_or("nucleo".to_string());
 
     let mut backend = match search_backend.as_str() {
+        #[cfg(feature = "nucleo")]
+        "nucleo" => Backend::Nucleo(crate::nucleo::Backend::new()),
+        #[cfg(feature = "tantivy")]
         "tantivy" => Backend::Tantivy(
             crate::tantivy::Backend::new()
                 .map_err(|e| format!("failed to init tantivy backend: {:?}", e))?,
         ),
-        "nucleo" => Backend::Nucleo(crate::nucleo::Backend::new()),
         v => panic!("unknown backend {}", v),
     };
 

@@ -57,24 +57,32 @@ pub trait IndexerBackend {
 }
 
 pub enum Backend {
-    Tantivy(crate::tantivy::Backend),
+    #[cfg(feature = "nucleo")]
     Nucleo(crate::nucleo::Backend),
+    #[cfg(feature = "tantivy")]
+    Tantivy(crate::tantivy::Backend),
 }
 
 #[derive(Error, Debug)]
 pub enum IndexError {
-    #[error("tantivy")]
-    Tantivy(#[source] crate::tantivy::IndexError),
+    #[cfg(feature = "nucleo")]
     #[error("nucleo")]
     Nucleo(#[source] crate::nucleo::IndexError),
+
+    #[cfg(feature = "tantivy")]
+    #[error("tantivy")]
+    Tantivy(#[source] crate::tantivy::IndexError),
 }
 
 #[derive(Error, Debug)]
 pub enum SearchError {
-    #[error("tantivy")]
-    Tantivy(#[source] crate::tantivy::SearchError),
+    #[cfg(feature = "nucleo")]
     #[error("nucleo")]
     Nucleo(#[source] crate::nucleo::SearchError),
+
+    #[cfg(feature = "tantivy")]
+    #[error("tantivy")]
+    Tantivy(#[source] crate::tantivy::SearchError),
 }
 
 impl Backend {
@@ -83,15 +91,20 @@ impl Backend {
         I: Iterator<Item = EmojiEntry>,
     {
         match self {
-            Backend::Tantivy(backend) => backend.index(emojis).map_err(IndexError::Tantivy),
+            #[cfg(feature = "nucleo")]
             Backend::Nucleo(backend) => backend.index(emojis).map_err(IndexError::Nucleo),
+
+            #[cfg(feature = "tantivy")]
+            Backend::Tantivy(backend) => backend.index(emojis).map_err(IndexError::Tantivy),
         }
     }
 
     pub fn search(&mut self, query: &str) -> Result<Vec<Emoji>, SearchError> {
         match self {
-            Backend::Tantivy(backend) => backend.search(query).map_err(SearchError::Tantivy),
+            #[cfg(feature = "nucleo")]
             Backend::Nucleo(backend) => backend.search(query).map_err(SearchError::Nucleo),
+            #[cfg(feature = "tantivy")]
+            Backend::Tantivy(backend) => backend.search(query).map_err(SearchError::Tantivy),
         }
     }
 }

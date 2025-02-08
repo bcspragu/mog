@@ -568,6 +568,7 @@ dependencies = [
 [[package]]
 name = "nucleo"
 version = "0.5.0"
+source = "git+https://github.com/bcspragu/nucleo?rev=0888f55deb37f7a0cf3518774a9ef8c2ecdea725#0888f55deb37f7a0cf3518774a9ef8c2ecdea725"
 dependencies = [
  "nucleo-matcher",
  "parking_lot",
@@ -577,6 +578,7 @@ dependencies = [
 [[package]]
 name = "nucleo-matcher"
 version = "0.3.1"
+source = "git+https://github.com/bcspragu/nucleo?rev=0888f55deb37f7a0cf3518774a9ef8c2ecdea725#0888f55deb37f7a0cf3518774a9ef8c2ecdea725"
 dependencies = [
  "memchr",
  "unicode-segmentation",
