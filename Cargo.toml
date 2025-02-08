@@ -9,5 +9,5 @@ crossterm = "0.28.1"
 tantivy = "0.22.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-nucleo = { path = "../external/nucleo" }
+nucleo = { git = "https://github.com/bcspragu/nucleo", rev = "0888f55deb37f7a0cf3518774a9ef8c2ecdea725" }
 thiserror = "2.0.11"
